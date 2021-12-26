@@ -25,13 +25,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/fswalker/internal/metrics"
-
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/proto"
+	tspb "google.golang.org/protobuf/types/known/timestamppb"
 
-	tspb "github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/google/fswalker/internal/metrics"
 	fspb "github.com/google/fswalker/proto/fswalker"
 )
 
@@ -256,7 +254,7 @@ func TestConvert(t *testing.T) {
 		sys:     &st,
 	}
 
-	mts, _ := ptypes.TimestampProto(info.ModTime())
+	mts := tspb.New(info.ModTime())
 	wantFile := &fspb.File{
 		Version: 1,
 		Path:    path,
@@ -364,14 +362,8 @@ func TestRun(t *testing.T) {
 	if err := proto.Unmarshal(b, walk); err != nil {
 		t.Errorf("unabled to decode proto file %q: %v", tmpfile.Name(), err)
 	}
-	st, err := ptypes.Timestamp(walk.StartWalk)
-	if err != nil {
-		t.Errorf("walk.StartWalk: unable to decode start timestamp: %v", err)
-	}
-	et, err := ptypes.Timestamp(walk.StopWalk)
-	if err != nil {
-		t.Errorf("walk.StopWalk: unable to decode stop timestamp: %v", err)
-	}
+	st := walk.StartWalk.AsTime()
+	et := walk.StopWalk.AsTime()
 	if st.Before(time.Now().Add(-time.Hour)) || st.After(et) {
 		t.Errorf("start time is not within bounds: %s < %s < %s", time.Now().Add(-time.Hour), st, et)
 	}

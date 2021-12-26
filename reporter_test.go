@@ -23,11 +23,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/proto"
+	tspb "google.golang.org/protobuf/types/known/timestamppb"
 
-	tspb "github.com/golang/protobuf/ptypes/timestamp"
 	fspb "github.com/google/fswalker/proto/fswalker"
 )
 
@@ -129,8 +128,8 @@ func TestReadWalk(t *testing.T) {
 		Id:        "",
 		Version:   1,
 		Hostname:  "testhost",
-		StartWalk: ptypes.TimestampNow(),
-		StopWalk:  ptypes.TimestampNow(),
+		StartWalk: tspb.Now(),
+		StopWalk:  tspb.Now(),
 		Policy: &fspb.Policy{
 			Version: 1,
 			Include: []string{
@@ -205,9 +204,9 @@ func TestReadWalk(t *testing.T) {
 }
 
 func TestSanityCheck(t *testing.T) {
-	ts1, _ := ptypes.TimestampProto(time.Now())
-	ts2, _ := ptypes.TimestampProto(time.Now().Add(time.Hour * 10))
-	ts3, _ := ptypes.TimestampProto(time.Now().Add(time.Hour * 20))
+	ts1 := tspb.Now()
+	ts2 := tspb.New(time.Now().Add(time.Hour * 10))
+	ts3 := tspb.New(time.Now().Add(time.Hour * 20))
 	testCases := []struct {
 		before  *fspb.Walk
 		after   *fspb.Walk

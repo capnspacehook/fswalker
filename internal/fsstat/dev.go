@@ -6,7 +6,7 @@ import (
 	"os"
 	"syscall"
 
-	tspb "github.com/golang/protobuf/ptypes/timestamp"
+	tspb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // DevNumber returns the device number for info
