@@ -20,19 +20,17 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"path"
 	"sort"
 	"strings"
 	"time"
 
-	"github.com/google/fswalker/internal/metrics"
-
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
+	tspb "google.golang.org/protobuf/types/known/timestamppb"
 
-	tspb "github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/google/fswalker/internal/metrics"
 	fspb "github.com/google/fswalker/proto/fswalker"
 )
 
@@ -192,8 +190,8 @@ func (r *Reporter) sanityCheck(before, after *fspb.Walk) error {
 		return fmt.Errorf("you're comparing apples and oranges: %s != %s", before.Hostname, after.Hostname)
 	}
 	if before != nil {
-		beforeTs, _ := ptypes.Timestamp(before.StopWalk)
-		afterTs, _ := ptypes.Timestamp(after.StartWalk)
+		beforeTs := before.StopWalk.AsTime()
+		afterTs := after.StartWalk.AsTime()
 		if beforeTs.After(afterTs) {
 			return fmt.Errorf("earlier Walk indicates it ended (%s) after later Walk (%s) has started", beforeTs, afterTs)
 		}
@@ -215,14 +213,8 @@ func (r *Reporter) timestampDiff(bt, at *tspb.Timestamp) (string, error) {
 	if bt == nil && at == nil {
 		return "", nil
 	}
-	bmt, err := ptypes.Timestamp(bt)
-	if err != nil {
-		return "", err
-	}
-	amt, err := ptypes.Timestamp(at)
-	if err != nil {
-		return "", err
-	}
+	bmt := bt.AsTime()
+	amt := at.AsTime()
 	if bmt.Equal(amt) {
 		return "", nil
 	}
@@ -357,15 +349,15 @@ func (r *Reporter) Compare(before, after *fspb.Walk) (*Report, error) {
 	walkedAfter := map[string]*fspb.File{}
 	if before != nil {
 		for _, fbOrig := range before.File {
-			fb := *fbOrig
+			fb := proto.Clone(fbOrig).(*fspb.File)
 			fb.Path = NormalizePath(fb.Path, fb.Info.IsDir)
-			walkedBefore[fb.Path] = &fb
+			walkedBefore[fb.Path] = fb
 		}
 	}
 	for _, faOrig := range after.File {
-		fa := *faOrig
+		fa := proto.Clone(faOrig).(*fspb.File)
 		fa.Path = NormalizePath(fa.Path, fa.Info.IsDir)
-		walkedAfter[fa.Path] = &fa
+		walkedAfter[fa.Path] = fa
 	}
 
 	counter := metrics.Counter{}
@@ -497,14 +489,9 @@ func (r *Reporter) PrintDiffSummary(out io.Writer, report *Report) {
 
 // printWalkSummary prints some information about the given walk.
 func (r *Reporter) printWalkSummary(out io.Writer, walk *fspb.Walk) {
-	awst, err := ptypes.Timestamp(walk.StartWalk)
-	if err != nil {
-		log.Fatalf("unable to convert after walk start timestamp: %v", err)
-	}
-	awet, err := ptypes.Timestamp(walk.StopWalk)
-	if err != nil {
-		log.Fatalf("unable to convert after walk stop timestamp: %v", err)
-	}
+	awst := walk.StartWalk.AsTime()
+	awet := walk.StopWalk.AsTime()
+
 	fmt.Fprintf(out, "  - ID: %s\n", walk.Id)
 	fmt.Fprintf(out, "  - Start Time: %s\n", awst)
 	fmt.Fprintf(out, "  - Stop Time: %s\n", awet)
@@ -547,9 +534,9 @@ func (r *Reporter) PrintRuleSummary(out io.Writer, report *Report) {
 		if report.WalkBefore != nil {
 			policy = report.WalkBefore.Policy
 		}
-		fmt.Fprintln(out, proto.MarshalTextString(policy))
+		fmt.Fprintln(out, prototext.Format(policy))
 		fmt.Fprintln(out, "Report Config:")
-		fmt.Fprintln(out, proto.MarshalTextString(r.config))
+		fmt.Fprintln(out, prototext.Format(r.config))
 	}
 }
 
@@ -560,7 +547,7 @@ func (r *Reporter) UpdateReviewProto(ctx context.Context, walkFile *WalkFile, re
 		WalkReference: walkFile.Path,
 		Fingerprint:   walkFile.Fingerprint,
 	}
-	blob := proto.MarshalTextString(&fspb.Reviews{
+	blob := prototext.Format(&fspb.Reviews{
 		Review: map[string]*fspb.Review{
 			walkFile.Walk.Hostname: review,
 		},

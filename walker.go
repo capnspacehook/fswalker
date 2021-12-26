@@ -23,8 +23,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/google/uuid"
+	tspb "google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/google/fswalker/internal/fsstat"
 	"github.com/google/fswalker/internal/metrics"
@@ -117,7 +117,7 @@ func (w *Walker) convert(path string, info os.FileInfo) (*fspb.File, error) {
 		}
 	}
 
-	mts, _ := ptypes.TimestampProto(info.ModTime()) // ignoring the error and using default
+	mts := tspb.New(info.ModTime()) // ignoring the error and using default
 	f.Info = &fspb.FileInfo{
 		Name:     info.Name(),
 		Size:     info.Size(),
@@ -159,7 +159,7 @@ func (w *Walker) process(ctx context.Context, f *fspb.File) error {
 	// Print a short overview if we're running in verbose mode.
 	if w.Verbose {
 		fmt.Println(NormalizePath(f.Path, f.Info.IsDir))
-		ts, _ := ptypes.Timestamp(f.Info.Modified) // ignoring error in ts conversion
+		ts := f.Info.Modified.AsTime() // ignoring error in ts conversion
 		info := []string{
 			fmt.Sprintf("size(%d)", f.Info.Size),
 			fmt.Sprintf("mode(%v)", os.FileMode(f.Info.Mode)),
@@ -297,7 +297,7 @@ func (w *Walker) Run(ctx context.Context) error {
 		Id:        walkID,
 		Policy:    w.pol,
 		Hostname:  hn,
-		StartWalk: ptypes.TimestampNow(),
+		StartWalk: tspb.Now(),
 	}
 
 	chPaths := make(chan string, 10)
@@ -332,7 +332,7 @@ func (w *Walker) Run(ctx context.Context) error {
 	}
 
 	// Finishing work by writing out the report.
-	w.walk.StopWalk = ptypes.TimestampNow()
+	w.walk.StopWalk = tspb.Now()
 	if w.WalkCallback == nil {
 		return nil
 	}
