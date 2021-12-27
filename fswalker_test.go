@@ -195,7 +195,7 @@ func TestReadPolicy(t *testing.T) {
 func TestWriteTextProtoReviews(t *testing.T) {
 	wantReviews := &fspb.Reviews{
 		Review: map[string]*fspb.Review{
-			"hostname": &fspb.Review{
+			"hostname": {
 				WalkId:        "id",
 				WalkReference: "reference",
 				Fingerprint: &fspb.Fingerprint{
