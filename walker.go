@@ -17,6 +17,7 @@ package fswalker
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -230,11 +231,12 @@ func (w *Walker) worker(ctx context.Context, chPaths <-chan string) error {
 		if err != nil {
 			return fmt.Errorf("unable to get file stat on base path %q: %v", path, err)
 		}
-		if err := filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
-			p = NormalizePath(p, info.IsDir())
+
+		if err := filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
+			p = NormalizePath(p, d.IsDir())
 			if err != nil {
 				msg := fmt.Sprintf("failed to walk %q: %s", p, err)
-				log.Printf(msg)
+				log.Print(msg)
 				w.addNotificationToWalk(fspb.Notification_WARNING, p, msg)
 				return nil // returning SkipDir on a file would skip the rest of the files in the dir
 			}
@@ -244,32 +246,41 @@ func (w *Walker) worker(ctx context.Context, chPaths <-chan string) error {
 				if w.Verbose {
 					w.addNotificationToWalk(fspb.Notification_INFO, p, fmt.Sprintf("skipping %q: excluded", p))
 				}
-				if info.IsDir() {
+				if d.IsDir() {
 					return filepath.SkipDir
 				}
 				return nil // returning SkipDir on a file would skip the rest of the files in the dir
 			}
-			if w.pol.IgnoreIrregularFiles && !info.Mode().IsRegular() && !info.IsDir() {
+
+			info, err := d.Info()
+			if err != nil {
+				msg := fmt.Sprintf("failed to stat %q: %s", p, err)
+				log.Print(msg)
+				w.addNotificationToWalk(fspb.Notification_WARNING, p, msg)
+				return nil // returning SkipDir on a file would skip the rest of the files in the dir
+			}
+
+			if w.pol.IgnoreIrregularFiles && !info.Mode().IsRegular() && !d.IsDir() {
 				if w.Verbose {
 					w.addNotificationToWalk(fspb.Notification_INFO, p, fmt.Sprintf("skipping %q: irregular file (mode: %s)", p, info.Mode()))
 				}
-				return nil
+				return nil // returning SkipDir on a file would skip the rest of the files in the dir
 			}
 			f, err := w.convert(p, info)
 			if err != nil {
 				return err
 			}
-			if w.pol.MaxDirectoryDepth > 0 && info.IsDir() && w.relDirDepth(path, p) > w.pol.MaxDirectoryDepth {
+			if w.pol.MaxDirectoryDepth > 0 && d.IsDir() && w.relDirDepth(path, p) > w.pol.MaxDirectoryDepth {
 				w.addNotificationToWalk(fspb.Notification_WARNING, p, fmt.Sprintf("skipping %q: more than %d into base path %q", p, w.pol.MaxDirectoryDepth, path))
 				return filepath.SkipDir
 			}
 			if !w.pol.WalkCrossDevice && f.Stat != nil && baseDev != f.Stat.Dev {
 				msg := fmt.Sprintf("skipping %q: file is on different device", p)
-				log.Printf(msg)
+				log.Print(msg)
 				if w.Verbose {
 					w.addNotificationToWalk(fspb.Notification_INFO, p, msg)
 				}
-				if info.IsDir() {
+				if d.IsDir() {
 					return filepath.SkipDir
 				}
 				return nil // returning SkipDir on a file would skip the rest of the files in the dir

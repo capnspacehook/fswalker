@@ -248,7 +248,7 @@ func TestConvert(t *testing.T) {
 	info := &testFile{
 		name:    "hashSumTest",
 		size:    100,
-		mode:    os.FileMode(640),
+		mode:    os.FileMode(0640),
 		modTime: time.Now(),
 		isDir:   false,
 		sys:     &st,
@@ -261,7 +261,7 @@ func TestConvert(t *testing.T) {
 		Info: &fspb.FileInfo{
 			Name:     "hashSumTest",
 			Size:     100,
-			Mode:     640,
+			Mode:     0640,
 			Modified: mts,
 			IsDir:    false,
 		},
