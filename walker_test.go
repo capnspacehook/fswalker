@@ -35,12 +35,12 @@ import (
 
 type outpathWriter string
 
-func (o outpathWriter) writeWalk(ctx context.Context, walk *fspb.Walk) error {
+func (o outpathWriter) writeWalk(walk *fspb.Walk) error {
 	walkBytes, err := proto.Marshal(walk)
 	if err != nil {
 		return err
 	}
-	return WriteFile(ctx, string(o), walkBytes, 0444)
+	return os.WriteFile(string(o), walkBytes, 0444)
 }
 
 // testFile implements the os.FileInfo interface.
@@ -80,8 +80,7 @@ func TestWalkerFromPolicyFile(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
-	wlkr, err := WalkerFromPolicyFile(ctx, path)
+	wlkr, err := WalkerFromPolicyFile(path)
 	if err != nil {
 		t.Errorf("WalkerFromPolicyFile() error: %v", err)
 		return
@@ -354,7 +353,7 @@ func TestRun(t *testing.T) {
 		}
 	}
 
-	b, err := ReadFile(ctx, tmpfile.Name())
+	b, err := os.ReadFile(tmpfile.Name())
 	if err != nil {
 		t.Errorf("unable to read file %q: %v", tmpfile.Name(), err)
 	}

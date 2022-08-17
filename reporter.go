@@ -15,12 +15,13 @@
 package fswalker
 
 import (
-	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -70,9 +71,9 @@ type ActionData struct {
 }
 
 // ReporterFromConfigFile creates a new Reporter based on a config path.
-func ReporterFromConfigFile(ctx context.Context, path string, verbose bool) (*Reporter, error) {
+func ReporterFromConfigFile(path string, verbose bool) (*Reporter, error) {
 	config := &fspb.ReportConfig{}
-	if err := readTextProto(ctx, path, config); err != nil {
+	if err := readTextProto(path, config); err != nil {
 		return nil, err
 	}
 	return &Reporter{
@@ -118,8 +119,8 @@ func (r *Reporter) fingerprint(b []byte) *fspb.Fingerprint {
 }
 
 // ReadWalk reads a file as marshaled proto in fspb.Walk format.
-func (r *Reporter) ReadWalk(ctx context.Context, path string) (*WalkFile, error) {
-	b, err := ReadFile(ctx, path)
+func (r *Reporter) ReadWalk(path string) (*WalkFile, error) {
+	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -136,9 +137,9 @@ func (r *Reporter) ReadWalk(ctx context.Context, path string) (*WalkFile, error)
 
 // ReadLatestWalk looks for the latest Walk in a given folder for a given hostname.
 // It returns the file path it ended up reading, the Walk it read and the fingerprint for it.
-func (r *Reporter) ReadLatestWalk(ctx context.Context, hostname, walkPath string) (*WalkFile, error) {
+func (r *Reporter) ReadLatestWalk(hostname, walkPath string) (*WalkFile, error) {
 	matchpath := path.Join(walkPath, WalkFilename(hostname, time.Time{}))
-	names, err := Glob(ctx, matchpath)
+	names, err := filepath.Glob(matchpath)
 	if err != nil {
 		return nil, err
 	}
@@ -146,23 +147,23 @@ func (r *Reporter) ReadLatestWalk(ctx context.Context, hostname, walkPath string
 		return nil, fmt.Errorf("no files found for %q", matchpath)
 	}
 	sort.Strings(names) // the assumption is that the file names are such that the latest is last.
-	return r.ReadWalk(ctx, names[len(names)-1])
+	return r.ReadWalk(names[len(names)-1])
 }
 
 // ReadLastGoodWalk reads the designated review file and attempts to find an entry matching
 // the given hostname. Note that if it can't find one but the review file itself was read
 // successfully, it will return an empty Walk and no error.
 // It returns the file path it ended up reading, the Walk it read and the fingerprint for it.
-func (r *Reporter) ReadLastGoodWalk(ctx context.Context, hostname, reviewFile string) (*WalkFile, error) {
+func (r *Reporter) ReadLastGoodWalk(hostname, reviewFile string) (*WalkFile, error) {
 	reviews := &fspb.Reviews{}
-	if err := readTextProto(ctx, reviewFile, reviews); err != nil {
+	if err := readTextProto(reviewFile, reviews); err != nil {
 		return nil, err
 	}
 	rvws, ok := reviews.Review[hostname]
 	if !ok {
 		return nil, nil
 	}
-	wf, err := r.ReadWalk(ctx, rvws.WalkReference)
+	wf, err := r.ReadWalk(rvws.WalkReference)
 	if err != nil {
 		return wf, err
 	}
@@ -262,6 +263,7 @@ func (r *Reporter) diffFileInfo(fib, fia *fspb.FileInfo) ([]string, error) {
 //   - atime
 //   - inode, nlink, dev, rdev
 //   - blksize, blocks
+//
 // The following fields are ignored as they are already part of diffFileInfo() check
 // which is more guaranteed to be available (to avoid duplicate output):
 //   - mode
@@ -541,7 +543,7 @@ func (r *Reporter) PrintRuleSummary(out io.Writer, report *Report) {
 }
 
 // UpdateReviewProto updates the reviews file to the reviewed version to be "last known good".
-func (r *Reporter) UpdateReviewProto(ctx context.Context, walkFile *WalkFile, reviewFile string) error {
+func (r *Reporter) UpdateReviewProto(walkFile *WalkFile, reviewFile string) error {
 	review := &fspb.Review{
 		WalkId:        walkFile.Walk.Id,
 		WalkReference: walkFile.Path,
@@ -558,12 +560,12 @@ func (r *Reporter) UpdateReviewProto(ctx context.Context, walkFile *WalkFile, re
 
 	if reviewFile != "" {
 		reviews := &fspb.Reviews{}
-		if err := readTextProto(ctx, reviewFile, reviews); err != nil {
+		if err := readTextProto(reviewFile, reviews); err != nil {
 			return err
 		}
 
 		reviews.Review[walkFile.Walk.Hostname] = review
-		if err := writeTextProto(ctx, reviewFile, reviews); err != nil {
+		if err := writeTextProto(reviewFile, reviews); err != nil {
 			return err
 		}
 		fmt.Printf("Changes written to %q\n", reviewFile)

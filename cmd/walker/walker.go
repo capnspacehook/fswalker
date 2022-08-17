@@ -24,8 +24,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/google/fswalker"
+	"google.golang.org/protobuf/proto"
 
 	fspb "github.com/google/fswalker/proto/fswalker"
 )
@@ -36,7 +36,7 @@ var (
 	verbose       = flag.Bool("verbose", false, "when set to true, prints all discovered files including a metadata summary")
 )
 
-func walkCallback(ctx context.Context, walk *fspb.Walk) error {
+func walkCallback(walk *fspb.Walk) error {
 	if *outputFilePfx == "" {
 		return nil
 	}
@@ -48,7 +48,7 @@ func walkCallback(ctx context.Context, walk *fspb.Walk) error {
 	if err != nil {
 		return err
 	}
-	return fswalker.WriteFile(ctx, outpath, walkBytes, 0444)
+	return os.WriteFile(outpath, walkBytes, 0444)
 }
 
 func outputPath(pfx string) (string, error) {
@@ -60,14 +60,13 @@ func outputPath(pfx string) (string, error) {
 }
 
 func main() {
-	ctx := context.Background()
 	flag.Parse()
 
 	if *policyFile == "" {
 		log.Fatal("policy-file needs to be specified")
 	}
 
-	w, err := fswalker.WalkerFromPolicyFile(ctx, *policyFile)
+	w, err := fswalker.WalkerFromPolicyFile(*policyFile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -75,6 +74,7 @@ func main() {
 	w.WalkCallback = walkCallback
 
 	// Walk the file system and wait for completion of processing.
+	ctx := context.Background()
 	if err := w.Run(ctx); err != nil {
 		log.Fatal(err)
 	}

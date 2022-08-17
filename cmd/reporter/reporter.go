@@ -16,7 +16,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -50,26 +49,26 @@ func askUpdateReviews() bool {
 	return false
 }
 
-func walksByLatest(ctx context.Context, r *fswalker.Reporter, hostname, reviewFile, walkPath string) (*fswalker.WalkFile, *fswalker.WalkFile, error) {
-	before, err := r.ReadLastGoodWalk(ctx, hostname, reviewFile)
+func walksByLatest(r *fswalker.Reporter, hostname, reviewFile, walkPath string) (*fswalker.WalkFile, *fswalker.WalkFile, error) {
+	before, err := r.ReadLastGoodWalk(hostname, reviewFile)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to load last good walk for %s: %v", hostname, err)
 	}
-	after, err := r.ReadLatestWalk(ctx, hostname, walkPath)
+	after, err := r.ReadLatestWalk(hostname, walkPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to load latest walk for %s: %v", hostname, err)
 	}
 	return before, after, nil
 }
 
-func walksByFiles(ctx context.Context, r *fswalker.Reporter, beforeFile, afterFile string) (*fswalker.WalkFile, *fswalker.WalkFile, error) {
-	after, err := r.ReadWalk(ctx, afterFile)
+func walksByFiles(r *fswalker.Reporter, beforeFile, afterFile string) (*fswalker.WalkFile, *fswalker.WalkFile, error) {
+	after, err := r.ReadWalk(afterFile)
 	if err != nil {
 		return nil, nil, fmt.Errorf("File cannot be read: %s", afterFile)
 	}
 	var before *fswalker.WalkFile
 	if beforeFile != "" {
-		before, err = r.ReadWalk(ctx, beforeFile)
+		before, err = r.ReadWalk(beforeFile)
 		if err != nil {
 			return nil, nil, fmt.Errorf("File cannot be read: %s", beforeFile)
 		}
@@ -78,14 +77,13 @@ func walksByFiles(ctx context.Context, r *fswalker.Reporter, beforeFile, afterFi
 }
 
 func main() {
-	ctx := context.Background()
 	flag.Parse()
 
 	// Loading configs and walks.
 	if *configFile == "" {
 		log.Fatal("config-file needs to be specified")
 	}
-	rptr, err := fswalker.ReporterFromConfigFile(ctx, *configFile, *verbose)
+	rptr, err := fswalker.ReporterFromConfigFile(*configFile, *verbose)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -96,9 +94,9 @@ func main() {
 		if *afterFile != "" || *beforeFile != "" {
 			log.Fatalf("[hostname review-file walk-path] and [[before-file] after-file] are mutually exclusive")
 		}
-		before, after, errWalks = walksByLatest(ctx, rptr, *hostname, *reviewFile, *walkPath)
+		before, after, errWalks = walksByLatest(rptr, *hostname, *reviewFile, *walkPath)
 	} else if *afterFile != "" {
-		before, after, errWalks = walksByFiles(ctx, rptr, *beforeFile, *afterFile)
+		before, after, errWalks = walksByFiles(rptr, *beforeFile, *afterFile)
 	} else {
 		log.Fatalf("either [hostname review-file walk-path] OR [[before-file] after-file] need to be specified")
 	}
@@ -160,7 +158,7 @@ func main() {
 
 	// Update reviews file if desired.
 	if *updateReview && askUpdateReviews() {
-		if err := rptr.UpdateReviewProto(ctx, after, *reviewFile); err != nil {
+		if err := rptr.UpdateReviewProto(after, *reviewFile); err != nil {
 			log.Fatal(err)
 		}
 	} else {

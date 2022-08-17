@@ -51,12 +51,12 @@ const (
 // WalkCallback is called by Walker at the end of the Run.
 // The callback is typically used to dump the walk to disk and/or perform any other checks.
 // The error return value is propagated back to the Run callers.
-type WalkCallback func(context.Context, *fspb.Walk) error
+type WalkCallback func(*fspb.Walk) error
 
 // WalkerFromPolicyFile creates a new Walker based on a policy path.
-func WalkerFromPolicyFile(ctx context.Context, path string) (*Walker, error) {
+func WalkerFromPolicyFile(path string) (*Walker, error) {
 	pol := &fspb.Policy{}
-	if err := readTextProto(ctx, path, pol); err != nil {
+	if err := readTextProto(path, pol); err != nil {
 		return nil, err
 	}
 	return &Walker{
@@ -347,5 +347,5 @@ func (w *Walker) Run(ctx context.Context) error {
 	if w.WalkCallback == nil {
 		return nil
 	}
-	return w.WalkCallback(ctx, w.walk)
+	return w.WalkCallback(w.walk)
 }

@@ -15,7 +15,6 @@
 package fswalker
 
 import (
-	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -101,7 +100,6 @@ func TestSha256sum(t *testing.T) {
 }
 
 func TestReadTextProtoReviews(t *testing.T) {
-	ctx := context.Background()
 	wantReviews := &fspb.Reviews{
 		Review: map[string]*fspb.Review{
 			"host-A.google.com": {
@@ -131,7 +129,7 @@ func TestReadTextProtoReviews(t *testing.T) {
 		},
 	}
 	reviews := &fspb.Reviews{}
-	if err := readTextProto(ctx, filepath.Join(testdataDir, "reviews.asciipb"), reviews); err != nil {
+	if err := readTextProto(filepath.Join(testdataDir, "reviews.asciipb"), reviews); err != nil {
 		t.Errorf("readTextProto() error: %v", err)
 	}
 	diff := cmp.Diff(reviews, wantReviews, cmp.Comparer(proto.Equal))
@@ -141,7 +139,6 @@ func TestReadTextProtoReviews(t *testing.T) {
 }
 
 func TestReadTextProtoConfigs(t *testing.T) {
-	ctx := context.Background()
 	wantConfig := &fspb.ReportConfig{
 		Version: 1,
 		ExcludePfx: []string{
@@ -154,7 +151,7 @@ func TestReadTextProtoConfigs(t *testing.T) {
 		},
 	}
 	config := &fspb.ReportConfig{}
-	if err := readTextProto(ctx, filepath.Join(testdataDir, "defaultReportConfig.asciipb"), config); err != nil {
+	if err := readTextProto(filepath.Join(testdataDir, "defaultReportConfig.asciipb"), config); err != nil {
 		t.Fatalf("readTextProto(): %v", err)
 	}
 	diff := cmp.Diff(config, wantConfig, cmp.Comparer(proto.Equal))
@@ -180,9 +177,8 @@ func TestReadPolicy(t *testing.T) {
 			"/var/tmp/",
 		},
 	}
-	ctx := context.Background()
 	pol := &fspb.Policy{}
-	if err := readTextProto(ctx, filepath.Join(testdataDir, "defaultClientPolicy.asciipb"), pol); err != nil {
+	if err := readTextProto(filepath.Join(testdataDir, "defaultClientPolicy.asciipb"), pol); err != nil {
 		t.Errorf("readTextProto() error: %v", err)
 		return
 	}
@@ -212,13 +208,12 @@ func TestWriteTextProtoReviews(t *testing.T) {
 	}
 	defer os.Remove(tmpfile.Name()) // clean up
 
-	ctx := context.Background()
-	if err := writeTextProto(ctx, tmpfile.Name(), wantReviews); err != nil {
+	if err := writeTextProto(tmpfile.Name(), wantReviews); err != nil {
 		t.Errorf("writeTextProto() error: %v", err)
 	}
 
 	gotReviews := &fspb.Reviews{}
-	if err := readTextProto(ctx, tmpfile.Name(), gotReviews); err != nil {
+	if err := readTextProto(tmpfile.Name(), gotReviews); err != nil {
 		t.Errorf("readTextProto() error: %v", err)
 	}
 	diff := cmp.Diff(gotReviews, wantReviews, cmp.Comparer(proto.Equal))

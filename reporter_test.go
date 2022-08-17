@@ -15,7 +15,6 @@
 package fswalker
 
 import (
-	"context"
 	"crypto/sha256"
 	"fmt"
 	"io/ioutil"
@@ -123,7 +122,6 @@ func TestFingerprint(t *testing.T) {
 }
 
 func TestReadWalk(t *testing.T) {
-	ctx := context.Background()
 	wantWalk := &fspb.Walk{
 		Id:        "",
 		Version:   1,
@@ -187,7 +185,7 @@ func TestReadWalk(t *testing.T) {
 	wantFp := fmt.Sprintf("%x", h.Sum(nil))
 
 	r := &Reporter{}
-	got, err := r.ReadWalk(ctx, tmpfile.Name())
+	got, err := r.ReadWalk(tmpfile.Name())
 	if err != nil {
 		t.Fatalf("readwalk(): %v", err)
 	}
