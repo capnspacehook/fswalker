@@ -17,7 +17,6 @@ package fswalker
 import (
 	"crypto/sha256"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -168,7 +167,7 @@ func TestReadWalk(t *testing.T) {
 		t.Fatalf("problems marshaling walk: %v", err)
 	}
 
-	tmpfile, err := ioutil.TempFile("", "walk.pb")
+	tmpfile, err := os.CreateTemp("", "walk.pb")
 	if err != nil {
 		t.Fatal(err)
 	}

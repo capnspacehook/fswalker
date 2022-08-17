@@ -15,7 +15,6 @@
 package fswalker
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -202,7 +201,7 @@ func TestWriteTextProtoReviews(t *testing.T) {
 		},
 	}
 
-	tmpfile, err := ioutil.TempFile("", "review.asciipb")
+	tmpfile, err := os.CreateTemp("", "review.asciipb")
 	if err != nil {
 		t.Fatal(err)
 	}
