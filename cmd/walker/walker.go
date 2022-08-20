@@ -31,15 +31,12 @@ import (
 )
 
 var (
-	policyFile    = flag.String("policy-file", "", "required policy file to use")
-	outputFilePfx = flag.String("output-file-pfx", "", "path prefix for the output file to write (when a path is set)")
-	verbose       = flag.Bool("verbose", false, "when set to true, prints all discovered files including a metadata summary")
+	policyFile    = flag.String("c", "", "required policy file to use")
+	outputFilePfx = flag.String("o", "", "path prefix for the output file to write")
+	verbose       = flag.Bool("v", false, "when set to true, prints all discovered files including a metadata summary")
 )
 
 func walkCallback(walk *fspb.Walk) error {
-	if *outputFilePfx == "" {
-		return nil
-	}
 	outpath, err := outputPath(*outputFilePfx)
 	if err != nil {
 		return err
@@ -54,7 +51,13 @@ func walkCallback(walk *fspb.Walk) error {
 func outputPath(pfx string) (string, error) {
 	hn, err := os.Hostname()
 	if err != nil {
-		return "", fmt.Errorf("unable to determine hostname: %v", err)
+		return "", fmt.Errorf("error getting hostname: %v", err)
+	}
+	if pfx == "" {
+		pfx, err = os.Getwd()
+		if err != nil {
+			return "", fmt.Errorf("error getting current directory: %v", err)
+		}
 	}
 	return filepath.Join(pfx, fswalker.WalkFilename(hn, time.Now())), nil
 }
@@ -63,7 +66,7 @@ func main() {
 	flag.Parse()
 
 	if *policyFile == "" {
-		log.Fatal("policy-file needs to be specified")
+		log.Fatal("-c needs to be specified")
 	}
 
 	w, err := fswalker.WalkerFromPolicyFile(*policyFile)

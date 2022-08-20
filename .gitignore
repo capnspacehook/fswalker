@@ -1,2 +1,4 @@
 *.textpb
 *.pb
+cmd/reporter/reporter
+cmd/walker/walker
