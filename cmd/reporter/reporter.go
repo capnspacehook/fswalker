@@ -18,23 +18,20 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io"
 	"log"
-	"os"
-	"os/exec"
+	"sort"
 	"strings"
 
 	"github.com/google/fswalker"
 )
 
 var (
-	configFile   = flag.String("config-file", "", "required report config file to use")
+	configFile   = flag.String("c", "", "required report config file to use")
 	walkPath     = flag.String("walk-path", "", "path to search for Walks")
 	reviewFile   = flag.String("review-file", "", "path to the file containing a list of last-known-good states - this needs to be writeable")
 	hostname     = flag.String("hostname", "", "host to review the differences for")
 	beforeFile   = flag.String("before-file", "", "path to the file to compare against (last known good typically)")
 	afterFile    = flag.String("after-file", "", "path to the file to compare with the before state")
-	paginate     = flag.Bool("paginate", false, "pipe output into $PAGER in order to paginate and make reviews easier")
 	verbose      = flag.Bool("verbose", false, "print additional output for each file which changed")
 	updateReview = flag.Bool("update-review", false, "ask to update the \"last known good\" review")
 )
@@ -43,10 +40,7 @@ func askUpdateReviews() bool {
 	fmt.Print("Do you want to update the \"last known good\" to this [y/N]: ")
 	var input string
 	fmt.Scanln(&input)
-	if strings.ToLower(strings.TrimSpace(input)) == "y" {
-		return true
-	}
-	return false
+	return strings.ToLower(strings.TrimSpace(input)) == "y"
 }
 
 func walksByLatest(r *fswalker.Reporter, hostname, reviewFile, walkPath string) (*fswalker.WalkFile, *fswalker.WalkFile, error) {
@@ -81,7 +75,7 @@ func main() {
 
 	// Loading configs and walks.
 	if *configFile == "" {
-		log.Fatal("config-file needs to be specified")
+		log.Fatal("-c needs to be specified")
 	}
 	rptr, err := fswalker.ReporterFromConfigFile(*configFile, *verbose)
 	if err != nil {
@@ -116,44 +110,19 @@ func main() {
 	}
 
 	// Processing and output.
-	// Note that we do some trickery here to allow pagination via $PAGER if requested.
-	out := io.WriteCloser(os.Stdout)
-	var cmd *exec.Cmd
-	if *paginate {
-		pager := os.Getenv("PAGER")
-		if pager == "" {
-			pager = "/usr/bin/less"
-		}
-		// Set up pager piped with the program's stdio.
-		// Its stdin is closed later in this func, after all reports have been piped.
-		cmd = exec.Command(pager)
-		cmd.Stdout = os.Stdout
-		pipein, err := cmd.StdinPipe()
-		if err != nil {
-			log.Fatal(err)
-		}
-		out = pipein
-		if err := cmd.Start(); err != nil {
-			log.Fatalf("unable to start %q: %v", pager, err)
-		}
-	}
-
 	if before == nil {
-		fmt.Fprintln(out, "No before walk found. Using after walk only.")
+		fmt.Println("No before walk found. Using after walk only.")
 	}
-	rptr.PrintReportSummary(out, report)
-	rptr.PrintRuleSummary(out, report)
-	rptr.PrintDiffSummary(out, report)
+	rptr.PrintReportSummary(report)
+	rptr.PrintRuleSummary(report)
+	rptr.PrintDiffSummary(report)
 
-	fmt.Fprintln(out, "Metrics:")
-	for _, k := range report.Counter.Metrics() {
+	fmt.Println("Metrics:")
+	metrics := report.Counter.Metrics()
+	sort.Strings(metrics)
+	for _, k := range metrics {
 		v, _ := report.Counter.Get(k)
-		fmt.Fprintf(out, "[%-30s] = %6d\n", k, v)
-	}
-
-	if *paginate {
-		out.Close()
-		cmd.Wait()
+		fmt.Printf("[%-30s] = %6d\n", k, v)
 	}
 
 	// Update reviews file if desired.
