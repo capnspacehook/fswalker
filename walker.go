@@ -86,6 +86,11 @@ type fileInfo struct {
 	info fs.FileInfo
 }
 
+type workerErr struct {
+	path string
+	err  string
+}
+
 // WalkerFromPolicyFile creates a new Walker based on a policy path.
 func WalkerFromPolicyFile(path string) (*Walker, error) {
 	pol := &fspb.Policy{}
@@ -115,20 +120,43 @@ func (w *Walker) Run(ctx context.Context) error {
 		StartWalk: tspb.Now(),
 	}
 
-	chPaths := make(chan *fileInfo, 64)
-	var wg sync.WaitGroup
+	fileCh := make(chan *fileInfo, 64)
+	errCh := make(chan *workerErr)
+	done := make(chan struct{})
+	var workerErrs []*workerErr
 
+	var wg sync.WaitGroup
 	wg.Add(parallelism)
+
+	// start workers to hash and build file info concurrently
 	for i := 0; i < parallelism; i++ {
 		go func() {
 			defer wg.Done()
-			w.worker(chPaths)
+			w.worker(fileCh, errCh)
 		}()
 	}
 
-	w.preformWalk(chPaths)
-	close(chPaths)
+	// start goroutine to store worker errors
+	go func() {
+		for {
+			for werr := range errCh {
+				workerErrs = append(workerErrs, werr)
+			}
+			done <- struct{}{}
+		}
+	}()
+
+	w.preformWalk(fileCh)
+
+	close(fileCh)
 	wg.Wait()
+
+	close(errCh)
+	<-done
+
+	for _, werr := range workerErrs {
+		w.addNotificationToWalk(fspb.Notification_ERROR, werr.path, werr.err)
+	}
 
 	// Finishing work by writing out the report.
 	w.walk.StopWalk = tspb.Now()
@@ -227,20 +255,12 @@ func (w *Walker) isExcluded(path string) bool {
 	return false
 }
 
-func (w *Walker) addFileToWalk(f *fspb.File) {
-	w.walkMu.Lock()
-	w.walk.File = append(w.walk.File, f)
-	w.walkMu.Unlock()
-}
-
 func (w *Walker) addNotificationToWalk(s fspb.Notification_Severity, path, msg string) {
-	w.walkMu.Lock()
 	w.walk.Notification = append(w.walk.Notification, &fspb.Notification{
 		Severity: s,
 		Path:     path,
 		Message:  msg,
 	})
-	w.walkMu.Unlock()
 }
 
 // relDirDepth calculates the path depth relative to the origin.
@@ -248,20 +268,23 @@ func (w *Walker) relDirDepth(origin, path string) uint32 {
 	return uint32(len(strings.Split(path, string(filepath.Separator))) - len(strings.Split(origin, string(filepath.Separator))))
 }
 
-func (w *Walker) worker(fileCh <-chan *fileInfo) {
+func (w *Walker) worker(fileCh <-chan *fileInfo, errCh chan<- *workerErr) {
 	hasher := sha256.New()
 	for file := range fileCh {
-		w.process(file, hasher)
+		w.process(file, hasher, errCh)
 	}
 }
 
 // process runs output functions for the given input File.
-func (w *Walker) process(fi *fileInfo, h hash.Hash) {
+func (w *Walker) process(fi *fileInfo, h hash.Hash, errCh chan<- *workerErr) {
 	f, err := w.convert(fi, h)
 	if err != nil {
 		msg := err.Error()
-		log.Println(err)
-		w.addNotificationToWalk(fspb.Notification_ERROR, fi.path, msg)
+		log.Println(msg)
+		errCh <- &workerErr{
+			path: f.Path,
+			err:  msg,
+		}
 	}
 
 	// Print a short overview if we're running in verbose mode.
@@ -283,7 +306,9 @@ func (w *Walker) process(fi *fileInfo, h hash.Hash) {
 	}
 
 	// Add file to the walk which will later be written out to disk.
-	w.addFileToWalk(f)
+	w.walkMu.Lock()
+	defer w.walkMu.Unlock()
+	w.walk.File = append(w.walk.File, f)
 
 	// Collect some metrics.
 	if w.Counter != nil {
