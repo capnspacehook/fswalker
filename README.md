@@ -2,8 +2,6 @@
 
 A simple and fast file system integrity checking tool in Go.
 
-[![Build Status](https://travis-ci.org/google/fswalker.svg?branch=master)](https://travis-ci.org/google/fswalker)
-
 ## Overview
 
 fswalker consists of two parts:
@@ -26,17 +24,16 @@ first place.
 Why using fswalker instead of using existing solutions such as Tripwire,
 AIDE, Samhain, etc?
 
-*  It's opensource and actively developed.
+*  It's open source and actively developed.
 *  All data formats used are open as well and thus allow easy imports and
    exports.
 *  It's easily expandable with local modifications.
-*  No dependencies on non-standard Go libraries outside github.com/google.
 
 ## Installation
 
-```bash
-go get github.com/google/fswalker/cmd/walker
-go get github.com/google/fswalker/cmd/reporter
+```sh
+go install github.com/capnspacehook/fswalker/cmd/walker@latest
+go install github.com/capnspacehook/fswalker/cmd/reporter@latest
 ```
 
 ## Configuration
@@ -143,7 +140,7 @@ how to use the libraries.
 Once you have a policy as [described above](#walker-policy), you can run the
 walker:
 
-```bash
+```sh
 walker \
   -policy-file=policy.textpb \
   -output-file-pfx="/tmp"
@@ -166,7 +163,7 @@ if `$PAGER` is not set) to page through the results.
 The simplest way to run it is to directly specify two Walk files to compare
 against each other:
 
-```bash
+```sh
 reporter \
   -config-file=config.textpb \
   -before-file=/tmp/some-host.google.com-20181205-060000-fswalker-state.pb \
@@ -182,7 +179,7 @@ list all files as newly added. This is only really useful with a new machine.
 Contrary to the above example, reporter would normally be run with a review
 file:
 
-```bash
+```sh
 reporter \
   -config-file=config.textpb \
   -review-file=reviews.textpb \ # this needs to be writeable!
@@ -203,7 +200,7 @@ under version control and four-eye principle / reviews.
 
 If you change the protocol buffer, ensure you generate a new Go library based on it:
 
-```bash
+```sh
 go generate
 ```
 
