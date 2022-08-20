@@ -16,6 +16,7 @@ package fswalker
 
 import (
 	"context"
+	"crypto/sha256"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -164,58 +165,6 @@ func TestIsExcluded(t *testing.T) {
 	}
 }
 
-func TestWantHashing(t *testing.T) {
-	testCases := []struct {
-		desc      string
-		hashpttrn []string
-		wantHash  bool
-	}{
-		{
-			desc:      "test exclusion with empty list",
-			hashpttrn: []string{},
-			wantHash:  false,
-		}, {
-			desc: "test exclusion with entries but no match",
-			hashpttrn: []string{
-				"/tmp/",
-				"/home/user2/",
-				"/var/log/",
-			},
-			wantHash: false,
-		}, {
-			desc: "test exclusion with entries and exact match",
-			hashpttrn: []string{
-				"/tmp/",
-				"/home/user/secret",
-				"/var/log/",
-			},
-			wantHash: true,
-		}, {
-			desc: "test exclusion with entries and prefix match",
-			hashpttrn: []string{
-				"/tmp/",
-				"/home/user",
-				"/var/log/",
-			},
-			wantHash: true,
-		},
-	}
-
-	const path = "/home/user/secret"
-	for _, tc := range testCases {
-		wlkr := &Walker{
-			pol: &fspb.Policy{
-				HashPfx: tc.hashpttrn,
-			},
-		}
-
-		gotHash := wlkr.wantHashing(path)
-		if gotHash != tc.wantHash {
-			t.Errorf("wantHashing() %q = %v; want %v", tc.desc, gotHash, tc.wantHash)
-		}
-	}
-}
-
 func TestConvert(t *testing.T) {
 	wlkr := &Walker{
 		pol: &fspb.Policy{
@@ -242,6 +191,7 @@ func TestConvert(t *testing.T) {
 	mtime := syscall.Timespec{Sec: time.Now().Unix(), Nsec: 200}
 	ctime := syscall.Timespec{Sec: time.Now().Unix(), Nsec: 300}
 	st = setTimes(st, atime, mtime, ctime)
+	h := sha256.New()
 
 	info := &testFile{
 		name:    "hashSumTest",
@@ -286,7 +236,7 @@ func TestConvert(t *testing.T) {
 		},
 	}
 
-	gotFile, err := wlkr.convert(path, nil) // ensuring there is no problems with nil file stats.
+	gotFile, err := wlkr.convert(path, nil, h) // ensuring there is no problems with nil file stats.
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -295,7 +245,7 @@ func TestConvert(t *testing.T) {
 		t.Errorf("convert() path = %q; want: %q", gotFile.Path, wantFile.Path)
 	}
 
-	gotFile, err = wlkr.convert(path, info)
+	gotFile, err = wlkr.convert(path, info, h)
 	if err != nil {
 		t.Fatal(err)
 	}

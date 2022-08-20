@@ -15,6 +15,7 @@
 package fswalker
 
 import (
+	"crypto/sha256"
 	"os"
 	"path/filepath"
 	"testing"
@@ -87,7 +88,7 @@ func TestNormalizePath(t *testing.T) {
 }
 
 func TestSha256sum(t *testing.T) {
-	gotHash, err := sha256sum(filepath.Join(testdataDir, "hashSumTest"))
+	gotHash, err := sha256sum(filepath.Join(testdataDir, "hashSumTest"), sha256.New())
 	if err != nil {
 		t.Errorf("sha256sum() error: %v", err)
 		return

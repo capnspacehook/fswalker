@@ -16,11 +16,14 @@ package fswalker
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
+	"hash"
 	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -33,9 +36,6 @@ import (
 )
 
 const (
-	// Number of root paths to walk in parallel.
-	parallelism = 1
-
 	// Versions for compatibility comparison.
 	fileVersion = 1
 	walkVersion = 1
@@ -46,6 +46,11 @@ const (
 	countFileSizeSum = "file-size-sum"
 	countStatErr     = "file-stat-errors"
 	countHashes      = "file-hash-count"
+)
+
+var (
+	// Number of workers
+	parallelism = runtime.NumCPU()
 )
 
 // WalkCallback is called by Walker at the end of the Run.
@@ -89,7 +94,7 @@ type Walker struct {
 }
 
 // convert creates a File from the given information and if requested embeds the hash sum too.
-func (w *Walker) convert(path string, info os.FileInfo) (*fspb.File, error) {
+func (w *Walker) convert(path string, info os.FileInfo, h hash.Hash) (*fspb.File, error) {
 	path = filepath.Clean(path)
 
 	f := &fspb.File{
@@ -103,9 +108,9 @@ func (w *Walker) convert(path string, info os.FileInfo) (*fspb.File, error) {
 
 	var shaSum string
 	// Only build the hash sum if requested and if it is not a directory.
-	if w.wantHashing(path) && !info.IsDir() && info.Size() <= w.pol.MaxHashFileSize {
+	if !info.IsDir() && info.Size() <= w.pol.MaxHashFileSize {
 		var err error
-		shaSum, err = sha256sum(path)
+		shaSum, err = sha256sum(path, h)
 		if err != nil {
 			log.Printf("unable to build hash for %s: %s", path, err)
 		} else {
@@ -133,16 +138,6 @@ func (w *Walker) convert(path string, info os.FileInfo) (*fspb.File, error) {
 	}
 
 	return f, nil
-}
-
-// wantHashing determines whether the given path was asked to be hashed.
-func (w *Walker) wantHashing(path string) bool {
-	for _, p := range w.pol.HashPfx {
-		if strings.HasPrefix(path, p) {
-			return true
-		}
-	}
-	return false
 }
 
 // isExcluded determines whether a given path was asked to be excluded from scanning.
@@ -222,6 +217,8 @@ func (w *Walker) relDirDepth(origin, path string) uint32 {
 // subdirectories until the channel is exhausted. All discovered files are converted to
 // File and processed with w.process().
 func (w *Walker) worker(ctx context.Context, chPaths <-chan string) error {
+	hasher := sha256.New()
+
 	for path := range chPaths {
 		baseInfo, err := os.Stat(path)
 		if err != nil {
@@ -238,7 +235,7 @@ func (w *Walker) worker(ctx context.Context, chPaths <-chan string) error {
 				msg := fmt.Sprintf("failed to walk %q: %s", p, err)
 				log.Print(msg)
 				w.addNotificationToWalk(fspb.Notification_WARNING, p, msg)
-				return nil // returning SkipDir on a file would skip the rest of the files in the dir
+				return nil
 			}
 
 			// Checking various exclusions based on flags in the walker policy.
@@ -249,7 +246,7 @@ func (w *Walker) worker(ctx context.Context, chPaths <-chan string) error {
 				if d.IsDir() {
 					return filepath.SkipDir
 				}
-				return nil // returning SkipDir on a file would skip the rest of the files in the dir
+				return nil
 			}
 
 			info, err := d.Info()
@@ -257,16 +254,16 @@ func (w *Walker) worker(ctx context.Context, chPaths <-chan string) error {
 				msg := fmt.Sprintf("failed to stat %q: %s", p, err)
 				log.Print(msg)
 				w.addNotificationToWalk(fspb.Notification_WARNING, p, msg)
-				return nil // returning SkipDir on a file would skip the rest of the files in the dir
+				return nil
 			}
 
 			if w.pol.IgnoreIrregularFiles && !info.Mode().IsRegular() && !d.IsDir() {
 				if w.Verbose {
 					w.addNotificationToWalk(fspb.Notification_INFO, p, fmt.Sprintf("skipping %q: irregular file (mode: %s)", p, info.Mode()))
 				}
-				return nil // returning SkipDir on a file would skip the rest of the files in the dir
+				return nil
 			}
-			f, err := w.convert(p, info)
+			f, err := w.convert(p, info, hasher)
 			if err != nil {
 				return err
 			}
@@ -283,7 +280,7 @@ func (w *Walker) worker(ctx context.Context, chPaths <-chan string) error {
 				if d.IsDir() {
 					return filepath.SkipDir
 				}
-				return nil // returning SkipDir on a file would skip the rest of the files in the dir
+				return nil
 			}
 
 			return w.process(ctx, f)

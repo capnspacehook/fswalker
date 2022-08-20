@@ -16,9 +16,9 @@
 package fswalker
 
 import (
-	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"hash"
 	"io"
 	"os"
 	"path/filepath"
@@ -63,14 +63,14 @@ func NormalizePath(path string, isDir bool) string {
 }
 
 // sha256sum reads the given file path and builds a SHA-256 sum over its content.
-func sha256sum(path string) (string, error) {
+func sha256sum(path string, h hash.Hash) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return "", err
 	}
 	defer f.Close()
+	h.Reset()
 
-	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
 		return "", err
 	}
