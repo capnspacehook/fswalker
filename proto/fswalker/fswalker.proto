@@ -62,27 +62,27 @@ message Policy {
   // prefixes will be ignored.
   repeated string exclude_pfx = 3;
 
-  // hash_pfx is a list of path prefixes. If the discovered File path is not a
   // directory, matches one of the prefixes and is not larger than
   // max_hash_file_size, the file will be opened and a file hash built over its
   // content.
   repeated string hash_pfx = 4;
-  int64 max_hash_file_size = 5;
 
   // Flags to control general behavior of Walker.
 
+  // max_hash_file_size controls what files will be hashed.
+  uint64 max_hash_file_size = 30;
   // walk_cross_device controls whether files on different devices from the
   // include directories should be walked. I.e. if "/" is included, "/tmp" will
   // only be walked if it is not a separate mount point.
-  bool walk_cross_device = 30;
+  bool walk_cross_device = 31;
   // ignore_irregular_files controls whether irregular files (i.e. symlinks,
   // sockets, devices, etc) should be ignored.
   // Note that symlinks are NOT followed either way.
-  bool ignore_irregular_files = 31;
+  bool ignore_irregular_files = 32;
   // max_directory_depth controls how many levels of directories Walker should
   // walk into an included directory.
   // Defaults to no restriction on depth (i.e. go all the way).
-  uint32 max_directory_depth = 32;
+  uint32 max_directory_depth = 33;
 }
 
 message Walk {

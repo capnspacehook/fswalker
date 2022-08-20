@@ -91,28 +91,6 @@ func TestWalkerFromPolicyFile(t *testing.T) {
 	}
 }
 
-func TestProcess(t *testing.T) {
-	ctx := context.Background()
-	wlkr := &Walker{
-		walk: &fspb.Walk{},
-	}
-
-	files := []*fspb.File{
-		{},
-		{},
-		{},
-	}
-	for _, f := range files {
-		if err := wlkr.process(ctx, f); err != nil {
-			t.Errorf("process() error: %v", err)
-			continue
-		}
-	}
-	if diff := cmp.Diff(wlkr.walk.File, files, cmp.Comparer(proto.Equal)); diff != "" {
-		t.Errorf("wlkr.walk.File != files: diff (-want +got):\n%s", diff)
-	}
-}
-
 func TestIsExcluded(t *testing.T) {
 	testCases := []struct {
 		desc     string
@@ -236,7 +214,7 @@ func TestConvert(t *testing.T) {
 		},
 	}
 
-	gotFile, err := wlkr.convert(path, nil, h) // ensuring there is no problems with nil file stats.
+	gotFile, err := wlkr.convert(&fileInfo{path: path, info: nil}, h) // ensuring there is no problems with nil file stats.
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -245,7 +223,7 @@ func TestConvert(t *testing.T) {
 		t.Errorf("convert() path = %q; want: %q", gotFile.Path, wantFile.Path)
 	}
 
-	gotFile, err = wlkr.convert(path, info, h)
+	gotFile, err = wlkr.convert(&fileInfo{path: path, info: info}, h)
 	if err != nil {
 		t.Fatal(err)
 	}
