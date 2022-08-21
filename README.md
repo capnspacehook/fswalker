@@ -46,9 +46,9 @@ output file. Most notably, it contains a list of includes and excludes.
 *  **include**: Includes are starting points for the file walk. All includes are
    walked simultaneously.
 
-*  **exclude_pfx**: Excludes are specified as prefixes. They are literal string
+*  **exclude**: Excludes are specified as prefixes. They are literal string
    prefix matches. To make this more clear, let's assume we have an `include` of
-   "/" and an `exclude_pfx` of "/home". When the walker evaluates "/home", it
+   "/" and an `exclude` of "/home". When the walker evaluates "/home", it
    will skip it because the prefix matches. However, it also skips
    "/homeofme/important.file".
 
@@ -57,23 +57,25 @@ options and their use.
 
 The following constitutes a functional example for Ubuntu:
 
-policy.textpb
+policy.toml
 
-```protobuf
-version: 1
-max_hash_file_size: 1048576
-walk_cross_device: true
-ignore_irregular_files: false
-include: "/"
-exclude_pfx: "/usr/local/"
-exclude_pfx: "/usr/src/"
-exclude_pfx: "/usr/share/"
-exclude_pfx: "/var/backups/"
-exclude_pfx: "/var/cache/"
-exclude_pfx: "/var/log/"
-exclude_pfx: "/var/mail/"
-exclude_pfx: "/var/spool/"
-exclude_pfx: "/var/tmp/"
+```toml
+version = 1
+maxHashFileSize = 1048576
+walkCrossDevice = true
+ignoreIrregularFiles = false
+include = ["/"]
+exclude = [
+  "/usr/local/",
+  "/usr/src/",
+  "/usr/share/",
+  "/var/backups/",
+  "/var/cache/",
+  "/var/log/",
+  "/var/mail/",
+  "/var/spool/",
+  "/var/tmp/",
+]
 ```
 
 ### Reporter Config
@@ -84,21 +86,23 @@ recording more details in the walks and fewer to be reported. If something
 suspicious is ever found, it allows going back to previous walks however and
 check what the status was back then.
 
-*  **exclude_pfx**: Excludes are specified as prefixes. They are literal string
+*  **exclude**: Excludes are specified as prefixes. They are literal string
    prefix matches. To make this more clear, let's assume we have an `include` of
-   "/" and an `exclude_pfx` of "/home". When the walker evaluates "/home", it
+   "/" and an `exclude` of "/home". When the walker evaluates "/home", it
    will skip it because the prefix matches. However, it also skips
    "/homeofme/important.file".
 
 The following constitutes a functional example for Ubuntu:
 
-config.textpb
+config.toml
 
 ```protobuf
-version: 1
-exclude_pfx: "/root/"
-exclude_pfx: "/home/"
-exclude_pfx: "/tmp/"
+version = 1
+exclude = [
+  "/root/",
+  "/home/",
+  "/tmp/",
+]
 ```
 
 Refer to the proto buffer description to see a complete reference of all
@@ -142,7 +146,7 @@ walker:
 
 ```sh
 walker \
-  -policy-file=policy.textpb \
+  -policy-file=policy.toml \
   -output-file-pfx="/tmp"
 ```
 
@@ -155,9 +159,6 @@ Walk file, you can run the reporter.
 
 Add `-verbose` to see more details about what's going on.
 
-To allow for easier reviews, `-paginate` allows to invoke `$PAGER` (or `less`
-if `$PAGER` is not set) to page through the results.
-
 #### Direct Comparison
 
 The simplest way to run it is to directly specify two Walk files to compare
@@ -165,7 +166,7 @@ against each other:
 
 ```sh
 reporter \
-  -config-file=config.textpb \
+  -config-file=config.toml \
   -before-file=/tmp/some-host.google.com-20181205-060000-fswalker-state.pb \
   -after-file=/tmp/some-host.google.com-20181206-060000-fswalker-state.pb \
   -paginate
@@ -181,7 +182,7 @@ file:
 
 ```sh
 reporter \
-  -config-file=config.textpb \
+  -config-file=config.toml \
   -review-file=reviews.textpb \ # this needs to be writeable!
   -walk-path=/tmp \
   -hostname=some-host.google.com \

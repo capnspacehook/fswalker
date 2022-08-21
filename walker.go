@@ -17,6 +17,7 @@ package fswalker
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"hash"
 	"io/fs"
@@ -24,9 +25,11 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 
+	"github.com/BurntSushi/toml"
 	"github.com/google/uuid"
 	tspb "google.golang.org/protobuf/types/known/timestamppb"
 
@@ -94,9 +97,23 @@ type workerErr struct {
 // WalkerFromPolicyFile creates a new Walker based on a policy path.
 func WalkerFromPolicyFile(path string) (*Walker, error) {
 	pol := &fspb.Policy{}
-	if err := readTextProto(path, pol); err != nil {
+	md, err := toml.DecodeFile(path, pol)
+	if err != nil {
 		return nil, err
 	}
+	if undec := md.Undecoded(); len(undec) > 0 {
+		var sb strings.Builder
+		sb.WriteString("unknown keys ")
+		for i, key := range undec {
+			sb.WriteString(strconv.Quote(key.String()))
+			if i != len(undec)-1 {
+				sb.WriteString(", ")
+			}
+		}
+
+		return nil, errors.New(sb.String())
+	}
+
 	return &Walker{
 		pol:     pol,
 		Counter: &metrics.Counter{},

@@ -21,9 +21,11 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/google/go-cmp/cmp"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/encoding/prototext"
@@ -72,9 +74,23 @@ type ActionData struct {
 // ReporterFromConfigFile creates a new Reporter based on a config path.
 func ReporterFromConfigFile(path string, verbose bool) (*Reporter, error) {
 	config := &fspb.ReportConfig{}
-	if err := readTextProto(path, config); err != nil {
+	md, err := toml.DecodeFile(path, config)
+	if err != nil {
 		return nil, err
 	}
+	if undec := md.Undecoded(); len(undec) > 0 {
+		var sb strings.Builder
+		sb.WriteString("unknown keys ")
+		for i, key := range undec {
+			sb.WriteString(strconv.Quote(key.String()))
+			if i != len(undec)-1 {
+				sb.WriteString(", ")
+			}
+		}
+
+		return nil, errors.New(sb.String())
+	}
+
 	return &Reporter{
 		config:     config,
 		configPath: path,
@@ -513,6 +529,7 @@ func (r *Reporter) PrintRuleSummary(report *Report) {
 	fmt.Println("===============================================================================")
 
 	if report.WalkBefore != nil {
+		// TODO: TOML encode
 		diff := cmp.Diff(report.WalkBefore.Policy, report.WalkAfter.Policy, cmp.Comparer(proto.Equal))
 		if diff != "" {
 			fmt.Println("Walks policy diff:")
@@ -522,15 +539,37 @@ func (r *Reporter) PrintRuleSummary(report *Report) {
 		}
 	}
 	if r.Verbose {
-		fmt.Println("Client Policy:")
 		policy := report.WalkAfter.Policy
 		if report.WalkBefore != nil {
 			policy = report.WalkBefore.Policy
 		}
-		fmt.Println(prototext.Format(policy))
+
+		fmt.Println("Client Policy:")
+		encPolicy, err := encodeTOML(policy)
+		if err != nil {
+			fmt.Printf("error encoding client policy: %v", err)
+		} else {
+			fmt.Println(encPolicy)
+		}
+
 		fmt.Println("Report Config:")
-		fmt.Println(prototext.Format(r.config))
+		encConfig, err := encodeTOML(r.config)
+		if err != nil {
+			fmt.Printf("error encoding report config: %v", err)
+		} else {
+			fmt.Println(encConfig)
+		}
 	}
+}
+
+func encodeTOML(v any) (string, error) {
+	var buf strings.Builder
+	enc := toml.NewEncoder(&buf)
+	err := enc.Encode(v)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }
 
 // UpdateReviewProto updates the reviews file to the reviewed version to be "last known good".
