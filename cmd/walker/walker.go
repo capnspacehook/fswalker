@@ -22,10 +22,10 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"sort"
 	"time"
 
 	"github.com/google/fswalker"
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
 
 	fspb "github.com/google/fswalker/proto/fswalker"
@@ -85,7 +85,7 @@ func main() {
 
 	fmt.Println("Metrics:")
 	metrics := w.Counter.Metrics()
-	sort.Strings(metrics)
+	slices.Sort(metrics)
 	for _, k := range metrics {
 		v, _ := w.Counter.Get(k)
 		fmt.Printf("[%-30s] = %6d\n", k, v)

@@ -19,11 +19,14 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"sort"
 	"strings"
+
+	"golang.org/x/exp/slices"
 
 	"github.com/google/fswalker"
 )
+
+const labelPfx = "before-files"
 
 var (
 	configFile   = flag.String("c", "", "required report config file to use")
@@ -117,9 +120,19 @@ func main() {
 	rptr.PrintRuleSummary(report)
 	rptr.PrintDiffSummary(report)
 
-	fmt.Println("Metrics:")
+	// sort so "before-files" metrics are first
 	metrics := report.Counter.Metrics()
-	sort.Strings(metrics)
+	slices.SortFunc(metrics, func(a, b string) bool {
+		if strings.HasPrefix(a, labelPfx) && !strings.HasPrefix(b, labelPfx) {
+			return true
+		}
+		if !strings.HasPrefix(a, labelPfx) && strings.HasPrefix(b, labelPfx) {
+			return false
+		}
+		return a < b
+	})
+
+	fmt.Println("Metrics:")
 	for _, k := range metrics {
 		v, _ := report.Counter.Get(k)
 		fmt.Printf("[%-30s] = %6d\n", k, v)

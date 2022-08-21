@@ -21,11 +21,11 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	tspb "google.golang.org/protobuf/types/known/timestamppb"
@@ -145,7 +145,7 @@ func (r *Reporter) ReadLatestWalk(hostname, walkPath string) (*WalkFile, error) 
 	if len(names) == 0 {
 		return nil, fmt.Errorf("no files found for %q", matchpath)
 	}
-	sort.Strings(names) // the assumption is that the file names are such that the latest is last.
+	slices.Sort(names) // the assumption is that the file names are such that the latest is last.
 	return r.ReadWalk(names[len(names)-1])
 }
 
@@ -336,7 +336,7 @@ func (r *Reporter) diffFile(before, after *fspb.File) (string, error) {
 		return "", fmt.Errorf("unable to diff file stat for %q: %v", before.Path, err)
 	}
 	diffs = append(diffs, fsDiffs...)
-	sort.Strings(diffs)
+	slices.Sort(diffs)
 	return strings.Join(diffs, "\n"), nil
 }
 
@@ -412,18 +412,20 @@ func (r *Reporter) Compare(before, after *fspb.Walk) (*Report, error) {
 		counter.Add(1, "after-files-created")
 		output.Added = append(output.Added, ActionData{After: fa})
 	}
-	sort.Slice(output.Added, func(i, j int) bool {
-		return output.Added[i].After.Path < output.Added[j].After.Path
+
+	slices.SortFunc(output.Added, func(a, b ActionData) bool {
+		return a.After.Path < b.After.Path
 	})
-	sort.Slice(output.Deleted, func(i, j int) bool {
-		return output.Deleted[i].Before.Path < output.Deleted[j].Before.Path
+	slices.SortFunc(output.Deleted, func(a, b ActionData) bool {
+		return a.Before.Path < b.Before.Path
 	})
-	sort.Slice(output.Modified, func(i, j int) bool {
-		return output.Modified[i].Before.Path < output.Modified[j].Before.Path
+	slices.SortFunc(output.Modified, func(a, b ActionData) bool {
+		return a.Before.Path < b.Before.Path
 	})
-	sort.Slice(output.Errors, func(i, j int) bool {
-		return output.Errors[i].Before.Path < output.Errors[j].Before.Path
+	slices.SortFunc(output.Errors, func(a, b ActionData) bool {
+		return a.Before.Path < b.Before.Path
 	})
+
 	return &output, nil
 }
 
