@@ -167,7 +167,7 @@ func TestReadPolicy(t *testing.T) {
 		Include: []string{
 			"/",
 		},
-		ExcludePfx: []string{
+		Exclude: []string{
 			"/usr/src/linux-headers",
 			"/usr/share/",
 			"/proc/",

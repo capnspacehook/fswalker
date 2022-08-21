@@ -52,15 +52,14 @@ message Policy {
   uint32 version = 1;
 
   // include is a list of paths to use as roots for file walks.
-  // Each walk can be done by a separate Go routine (if an idle one is
-  // available). Important to note that the include paths SHOULD NOT contain
+  // Important to note that the include paths SHOULD NOT contain
   // each other because that will lead to paths being visited more than once.
   repeated string include = 2;
 
-  // exclude_pfx is a list of path prefixes which will be excluded from being
-  // walked. Note that these are prefixes. Any path matching one of these
-  // prefixes will be ignored.
-  repeated string exclude_pfx = 3;
+  // exclude is a list of paths which will be excluded from being
+  // walked. Note that if a path ends in a slash it will be treated as a directory,
+  // otherwise as a file.
+  repeated string exclude = 3;
 
   // directory, matches one of the prefixes and is not larger than
   // max_hash_file_size, the file will be opened and a file hash built over its

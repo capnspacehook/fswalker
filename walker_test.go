@@ -69,7 +69,7 @@ func TestWalkerFromPolicyFile(t *testing.T) {
 		Include: []string{
 			"/",
 		},
-		ExcludePfx: []string{
+		Exclude: []string{
 			"/usr/src/linux-headers",
 			"/usr/share/",
 			"/proc/",
@@ -94,15 +94,18 @@ func TestWalkerFromPolicyFile(t *testing.T) {
 func TestIsExcluded(t *testing.T) {
 	testCases := []struct {
 		desc     string
+		path     string
 		excludes []string
 		wantExcl bool
 	}{
 		{
 			desc:     "test exclusion with empty list",
+			path:     "/foo",
 			excludes: []string{},
 			wantExcl: false,
 		}, {
 			desc: "test exclusion with entries but no match",
+			path: "/foo",
 			excludes: []string{
 				"/tmp/",
 				"/home/user2/",
@@ -110,33 +113,44 @@ func TestIsExcluded(t *testing.T) {
 			},
 			wantExcl: false,
 		}, {
-			desc: "test exclusion with entries and exact match",
+			desc: "test exclusion with dir match",
+			path: "/tmp/foo",
 			excludes: []string{
 				"/tmp/",
-				"/home/user/secret",
-				"/var/log/",
 			},
 			wantExcl: true,
 		}, {
-			desc: "test exclusion with entries and prefix match",
+			desc: "test exclusion with file match",
+			path: "/tmp/some_file",
 			excludes: []string{
-				"/tmp/",
-				"/home/user",
-				"/var/log/",
+				"/tmp/some_file",
 			},
 			wantExcl: true,
+		}, {
+			desc: "test exclusion with exact dir match",
+			path: "/tmp/some_file/",
+			excludes: []string{
+				"/tmp/some_file/",
+			},
+			wantExcl: true,
+		}, {
+			desc: "test exclusion with different file/dir",
+			path: "/tmp/some_file/",
+			excludes: []string{
+				"/tmp/some_file",
+			},
+			wantExcl: false,
 		},
 	}
 
-	const path = "/home/user/secret"
 	for _, tc := range testCases {
 		wlkr := &Walker{
 			pol: &fspb.Policy{
-				ExcludePfx: tc.excludes,
+				Exclude: tc.excludes,
 			},
 		}
 
-		gotExcl := wlkr.isExcluded(path)
+		gotExcl := wlkr.isExcluded(tc.path)
 		if gotExcl != tc.wantExcl {
 			t.Errorf("isExcluded() %q = %v; want %v", tc.desc, gotExcl, tc.wantExcl)
 		}

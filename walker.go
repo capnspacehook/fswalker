@@ -247,8 +247,13 @@ func (w *Walker) preformWalk(fileCh chan<- *fileInfo) error {
 
 // isExcluded determines whether a given path was asked to be excluded from scanning.
 func (w *Walker) isExcluded(path string) bool {
-	for _, e := range w.pol.ExcludePfx {
-		if strings.HasPrefix(path, e) {
+	for _, e := range w.pol.Exclude {
+		if path == e {
+			return true
+		}
+		// if e ends in a slash, treat it like a directory and match if e is the
+		// dir of path
+		if e[len(e)-1] == filepath.Separator && e == filepath.Dir(path)+string(filepath.Separator) {
 			return true
 		}
 	}

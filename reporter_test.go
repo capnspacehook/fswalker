@@ -132,7 +132,7 @@ func TestReadWalk(t *testing.T) {
 			Include: []string{
 				"/",
 			},
-			ExcludePfx: []string{
+			Exclude: []string{
 				"/var/log/",
 				"/home/",
 				"/tmp/",
