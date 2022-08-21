@@ -141,6 +141,7 @@ func (w *Walker) Run(ctx context.Context) error {
 		for {
 			for werr := range errCh {
 				workerErrs = append(workerErrs, werr)
+				log.Printf("ERROR: %s: %s", werr.path, werr.err)
 			}
 			done <- struct{}{}
 		}
@@ -191,7 +192,7 @@ func (w *Walker) preformWalk(fileCh chan<- *fileInfo) error {
 			}
 
 			// Checking various exclusions based on flags in the walker policy.
-			if w.isExcluded(p) {
+			if isExcluded(p, w.pol.Exclude) {
 				if w.Verbose {
 					w.addNotificationToWalk(fspb.Notification_INFO, p, fmt.Sprintf("skipping %q: excluded", p))
 				}
@@ -246,14 +247,14 @@ func (w *Walker) preformWalk(fileCh chan<- *fileInfo) error {
 }
 
 // isExcluded determines whether a given path was asked to be excluded from scanning.
-func (w *Walker) isExcluded(path string) bool {
-	for _, e := range w.pol.Exclude {
+func isExcluded(path string, excluded []string) bool {
+	for _, e := range excluded {
 		if path == e {
 			return true
 		}
 		// if e ends in a slash, treat it like a directory and match if e is the
 		// dir of path
-		if e[len(e)-1] == filepath.Separator && e == filepath.Dir(path)+string(filepath.Separator) {
+		if e[len(e)-1] == filepath.Separator && strings.HasPrefix(filepath.Dir(path)+string(filepath.Separator), e) {
 			return true
 		}
 	}
@@ -266,6 +267,7 @@ func (w *Walker) addNotificationToWalk(s fspb.Notification_Severity, path, msg s
 		Path:     path,
 		Message:  msg,
 	})
+	log.Printf("%s: %s: %s", s, path, msg)
 }
 
 // relDirDepth calculates the path depth relative to the origin.
@@ -282,15 +284,7 @@ func (w *Walker) worker(fileCh <-chan *fileInfo, errCh chan<- *workerErr) {
 
 // process runs output functions for the given input File.
 func (w *Walker) process(fi *fileInfo, h hash.Hash, errCh chan<- *workerErr) {
-	f, err := w.convert(fi, h)
-	if err != nil {
-		msg := err.Error()
-		log.Println(msg)
-		errCh <- &workerErr{
-			path: f.Path,
-			err:  msg,
-		}
-	}
+	f := w.convert(fi, h, errCh)
 
 	// Print a short overview if we're running in verbose mode.
 	if w.Verbose {
@@ -333,7 +327,7 @@ func (w *Walker) process(fi *fileInfo, h hash.Hash, errCh chan<- *workerErr) {
 }
 
 // convert creates a File from the given information and if requested embeds the hash sum too.
-func (w *Walker) convert(fi *fileInfo, h hash.Hash) (*fspb.File, error) {
+func (w *Walker) convert(fi *fileInfo, h hash.Hash, errCh chan<- *workerErr) *fspb.File {
 	path := filepath.Clean(fi.path)
 
 	f := &fspb.File{
@@ -342,16 +336,19 @@ func (w *Walker) convert(fi *fileInfo, h hash.Hash) (*fspb.File, error) {
 	}
 
 	if fi.info == nil {
-		return f, nil
+		return f
 	}
 
 	var shaSum string
 	// Only build the hash sum if requested and if it is not a directory.
-	if fi.info.Mode().IsRegular() && uint64(fi.info.Size()) <= w.pol.MaxHashFileSize {
+	if !isExcluded(fi.path, w.pol.ExcludeHashing) && fi.info.Mode().IsRegular() && uint64(fi.info.Size()) <= w.pol.MaxHashFileSize {
 		var err error
 		shaSum, err = sha256sum(path, h)
 		if err != nil {
-			log.Printf("unable to build hash for %s: %s", path, err)
+			errCh <- &workerErr{
+				path: f.Path,
+				err:  fmt.Sprintf("unable to build hash: %v", err),
+			}
 		} else {
 			f.Fingerprint = []*fspb.Fingerprint{
 				{
@@ -373,8 +370,11 @@ func (w *Walker) convert(fi *fileInfo, h hash.Hash) (*fspb.File, error) {
 
 	var err error
 	if f.Stat, err = fsstat.ToStat(fi.info); err != nil {
-		return f, err
+		errCh <- &workerErr{
+			path: f.Path,
+			err:  err.Error(),
+		}
 	}
 
-	return f, nil
+	return f
 }

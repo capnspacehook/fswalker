@@ -22,6 +22,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"time"
 
 	"github.com/google/fswalker"
@@ -83,7 +84,9 @@ func main() {
 	}
 
 	fmt.Println("Metrics:")
-	for _, k := range w.Counter.Metrics() {
+	metrics := w.Counter.Metrics()
+	sort.Strings(metrics)
+	for _, k := range metrics {
 		v, _ := w.Counter.Get(k)
 		fmt.Printf("[%-30s] = %6d\n", k, v)
 	}

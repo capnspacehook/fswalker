@@ -137,7 +137,7 @@ func TestReadWalk(t *testing.T) {
 				"/home/",
 				"/tmp/",
 			},
-			HashPfx: []string{
+			ExcludeHashing: []string{
 				"/etc/",
 			},
 			MaxHashFileSize: 1024 * 1024,

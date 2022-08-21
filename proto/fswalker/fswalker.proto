@@ -61,10 +61,8 @@ message Policy {
   // otherwise as a file.
   repeated string exclude = 3;
 
-  // directory, matches one of the prefixes and is not larger than
-  // max_hash_file_size, the file will be opened and a file hash built over its
-  // content.
-  repeated string hash_pfx = 4;
+  // exclude_hashing is a list of paths that will be excluded from being hashed.
+  repeated string exclude_hashing = 4;
 
   // Flags to control general behavior of Walker.
 

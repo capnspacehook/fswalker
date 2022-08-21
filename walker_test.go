@@ -144,13 +144,7 @@ func TestIsExcluded(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		wlkr := &Walker{
-			pol: &fspb.Policy{
-				Exclude: tc.excludes,
-			},
-		}
-
-		gotExcl := wlkr.isExcluded(tc.path)
+		gotExcl := isExcluded(tc.path, tc.excludes)
 		if gotExcl != tc.wantExcl {
 			t.Errorf("isExcluded() %q = %v; want %v", tc.desc, gotExcl, tc.wantExcl)
 		}
@@ -160,7 +154,7 @@ func TestIsExcluded(t *testing.T) {
 func TestConvert(t *testing.T) {
 	wlkr := &Walker{
 		pol: &fspb.Policy{
-			HashPfx: []string{
+			ExcludeHashing: []string{
 				testdataDir,
 			},
 			MaxHashFileSize: 1048576,
@@ -228,20 +222,12 @@ func TestConvert(t *testing.T) {
 		},
 	}
 
-	gotFile, err := wlkr.convert(&fileInfo{path: path, info: nil}, h) // ensuring there is no problems with nil file stats.
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	gotFile := wlkr.convert(&fileInfo{path: path, info: nil}, h, nil) // ensuring there is no problems with nil file stats.
 	if wantFile.Path != gotFile.Path {
 		t.Errorf("convert() path = %q; want: %q", gotFile.Path, wantFile.Path)
 	}
 
-	gotFile, err = wlkr.convert(&fileInfo{path: path, info: info}, h)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	gotFile = wlkr.convert(&fileInfo{path: path, info: info}, h, nil)
 	diff := cmp.Diff(gotFile, wantFile, cmp.Comparer(proto.Equal))
 	if diff != "" {
 		t.Errorf("convert() File proto: diff (-want +got):\n%s", diff)
@@ -262,7 +248,7 @@ func TestRun(t *testing.T) {
 			Include: []string{
 				testdataDir,
 			},
-			HashPfx: []string{
+			ExcludeHashing: []string{
 				testdataDir,
 			},
 			MaxHashFileSize: 1048576,
