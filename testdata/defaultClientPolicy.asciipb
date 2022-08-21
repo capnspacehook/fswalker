@@ -1,5 +1,5 @@
 version: 1
-max_hash_file_size: 1048576
+maxHashFileSize: 1048576
 include: "/"
 exclude: "/usr/src/linux-headers"
 exclude: "/usr/share/"

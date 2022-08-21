@@ -103,7 +103,7 @@ func TestReadTextProtoReviews(t *testing.T) {
 	wantReviews := &fspb.Reviews{
 		Review: map[string]*fspb.Review{
 			"host-A.google.com": {
-				WalkId:        "debffdde-47f3-454b-adaa-d79d95945c69",
+				WalkID:        "debffdde-47f3-454b-adaa-d79d95945c69",
 				WalkReference: "/some/file/path/hostA_20180922_state.pb",
 				Fingerprint: &fspb.Fingerprint{
 					Method: fspb.Fingerprint_SHA256,
@@ -111,7 +111,7 @@ func TestReadTextProtoReviews(t *testing.T) {
 				},
 			},
 			"host-B.google.com": {
-				WalkId:        "2bd40596-d7da-423c-9bb9-c682ebc23f75",
+				WalkID:        "2bd40596-d7da-423c-9bb9-c682ebc23f75",
 				WalkReference: "/some/file/path/hostB_20180810_state.pb",
 				Fingerprint: &fspb.Fingerprint{
 					Method: fspb.Fingerprint_SHA256,
@@ -119,7 +119,7 @@ func TestReadTextProtoReviews(t *testing.T) {
 				},
 			},
 			"host-C.google.com": {
-				WalkId:        "caf8192e-834f-4cd4-a216-fa6f7871ad41",
+				WalkID:        "caf8192e-834f-4cd4-a216-fa6f7871ad41",
 				WalkReference: "/some/file/path/hostC_20180922_state.pb",
 				Fingerprint: &fspb.Fingerprint{
 					Method: fspb.Fingerprint_SHA256,
@@ -141,7 +141,7 @@ func TestReadTextProtoReviews(t *testing.T) {
 func TestReadTextProtoConfigs(t *testing.T) {
 	wantConfig := &fspb.ReportConfig{
 		Version: 1,
-		ExcludePfx: []string{
+		Exclude: []string{
 			"/usr/src/linux-headers",
 			"/usr/share/",
 			"/proc/",
@@ -192,7 +192,7 @@ func TestWriteTextProtoReviews(t *testing.T) {
 	wantReviews := &fspb.Reviews{
 		Review: map[string]*fspb.Review{
 			"hostname": {
-				WalkId:        "id",
+				WalkID:        "id",
 				WalkReference: "reference",
 				Fingerprint: &fspb.Fingerprint{
 					Method: fspb.Fingerprint_SHA256,

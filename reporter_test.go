@@ -300,49 +300,6 @@ func TestSanityCheck(t *testing.T) {
 	}
 }
 
-func TestIsIgnored(t *testing.T) {
-	conf := &fspb.ReportConfig{
-		Version: 1,
-		ExcludePfx: []string{
-			"/tmp/",
-			"/var/log/",
-		},
-	}
-	testCases := []struct {
-		path   string
-		wantIg bool
-	}{
-		{
-			path:   "/tmp/something",
-			wantIg: true,
-		}, {
-			path:   "/tmp/",
-			wantIg: true,
-		}, {
-			path:   "/tmp",
-			wantIg: false,
-		}, {
-			path:   "/tmp2/file",
-			wantIg: false,
-		}, {
-			path:   "/home/someone",
-			wantIg: false,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.path, func(t *testing.T) {
-			r := &Reporter{
-				config: conf,
-			}
-			gotIg := r.isIgnored(tc.path)
-			if gotIg != tc.wantIg {
-				t.Errorf("isIgnored() ignore: got=%t, want=%t", gotIg, tc.wantIg)
-			}
-		})
-	}
-}
-
 func TestDiffFile(t *testing.T) {
 	testCases := []struct {
 		desc     string
@@ -583,7 +540,12 @@ func TestCompare(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			r := &Reporter{config: &fspb.ReportConfig{ExcludePfx: []string{"/ignore/"}}}
+			r := &Reporter{
+				config: &fspb.ReportConfig{
+					Exclude: []string{"/ignore/"},
+				},
+			}
+
 			report, err := r.Compare(tc.before, tc.after)
 			switch {
 			case tc.wantError && err == nil:

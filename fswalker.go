@@ -62,6 +62,21 @@ func NormalizePath(path string, isDir bool) string {
 	return p
 }
 
+// isExcluded determines whether a given path is excluded.
+func isExcluded(path string, excluded []string) bool {
+	for _, e := range excluded {
+		if path == e {
+			return true
+		}
+		// if e ends in a slash, treat it like a directory and match if e is the
+		// dir of path
+		if e[len(e)-1] == filepath.Separator && strings.HasPrefix(filepath.Dir(path)+string(filepath.Separator), e) {
+			return true
+		}
+	}
+	return false
+}
+
 // sha256sum reads the given file path and builds a SHA-256 sum over its content.
 func sha256sum(path string, h hash.Hash) (string, error) {
 	f, err := os.Open(path)

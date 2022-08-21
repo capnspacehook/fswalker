@@ -28,9 +28,9 @@ message Reviews {
 message Review {
   // The ID of the Walk that was reviewed and considered ok.
   // This will become the last known good.
-  string walk_id = 1;
+  string walkID = 1;
   // Reference to the Walk source (e.g. absolute path).
-  string walk_reference = 2;
+  string walkReference = 2;
   // Mandatory fingerprint of the walk file (to ensure integrity).
   Fingerprint fingerprint = 3;
 }
@@ -39,12 +39,11 @@ message ReportConfig {
   // version is the version of the proto structure.
   uint32 version = 1;
 
-  // exclude_pfx is a list of path prefixes which will be excluded from being
-  // reported. Note that these are prefixes. Any path matching one of these
-  // prefixes will be ignored. These are in addition to the exclusions in the
+  // exclude is a list of paths which will be excluded from being
+  // reported. These are in addition to the exclusions in the
   // client policy so more things can be recorded (but ignored in the default
   // report).
-  repeated string exclude_pfx = 2;
+  repeated string exclude = 2;
 }
 
 message Policy {
@@ -61,25 +60,25 @@ message Policy {
   // otherwise as a file.
   repeated string exclude = 3;
 
-  // exclude_hashing is a list of paths that will be excluded from being hashed.
-  repeated string exclude_hashing = 4;
+  // excludeHashing is a list of paths that will be excluded from being hashed.
+  repeated string excludeHashing = 4;
 
   // Flags to control general behavior of Walker.
 
-  // max_hash_file_size controls what files will be hashed.
-  uint64 max_hash_file_size = 30;
-  // walk_cross_device controls whether files on different devices from the
+  // maxHashFileSize controls what files will be hashed.
+  uint64 maxHashFileSize = 30;
+  // walkCrossDevice controls whether files on different devices from the
   // include directories should be walked. I.e. if "/" is included, "/tmp" will
   // only be walked if it is not a separate mount point.
-  bool walk_cross_device = 31;
-  // ignore_irregular_files controls whether irregular files (i.e. symlinks,
+  bool walkCrossDevice = 31;
+  // ignoreIrregularFiles controls whether irregular files (i.e. symlinks,
   // sockets, devices, etc) should be ignored.
   // Note that symlinks are NOT followed either way.
-  bool ignore_irregular_files = 32;
-  // max_directory_depth controls how many levels of directories Walker should
+  bool ignoreIrregularFiles = 32;
+  // maxDirectoryDepth controls how many levels of directories Walker should
   // walk into an included directory.
   // Defaults to no restriction on depth (i.e. go all the way).
-  uint32 max_directory_depth = 33;
+  uint32 maxDirectoryDepth = 33;
 }
 
 message Walk {
@@ -97,8 +96,8 @@ message Walk {
   // hostname of the machine the walk originates from.
   string hostname = 10;
   // start and stop time of the walk.
-  google.protobuf.Timestamp start_walk = 11;
-  google.protobuf.Timestamp stop_walk = 12;
+  google.protobuf.Timestamp startWalk = 11;
+  google.protobuf.Timestamp stopWalk = 12;
 }
 
 message Notification {
@@ -130,7 +129,7 @@ message FileInfo {
   // modification time
   google.protobuf.Timestamp modified = 4;
   // abbreviation for Mode().IsDir()
-  bool is_dir = 5;
+  bool isDir = 5;
 }
 
 message FileStat {

@@ -169,8 +169,8 @@ func (r *Reporter) ReadLastGoodWalk(hostname, reviewFile string) (*WalkFile, err
 	if err := r.verifyFingerprint(rvws.Fingerprint, wf.Fingerprint); err != nil {
 		return wf, err
 	}
-	if wf.Walk.Id != rvws.WalkId {
-		return wf, fmt.Errorf("walk ID doesn't match: %s (from %s) != %s (from %s)", wf.Walk.Id, rvws.WalkReference, rvws.WalkId, reviewFile)
+	if wf.Walk.Id != rvws.WalkID {
+		return wf, fmt.Errorf("walk ID doesn't match: %s (from %s) != %s (from %s)", wf.Walk.Id, rvws.WalkReference, rvws.WalkID, reviewFile)
 	}
 	return wf, nil
 }
@@ -197,16 +197,6 @@ func (r *Reporter) sanityCheck(before, after *fspb.Walk) error {
 		}
 	}
 	return nil
-}
-
-// isIgnored checks for a given file path whether it is ignored by the report config or not.
-func (r *Reporter) isIgnored(path string) bool {
-	for _, i := range r.config.ExcludePfx {
-		if strings.HasPrefix(path, i) {
-			return true
-		}
-	}
-	return false
 }
 
 func (r *Reporter) timestampDiff(bt, at *tspb.Timestamp) (string, error) {
@@ -370,7 +360,7 @@ func (r *Reporter) Compare(before, after *fspb.Walk) (*Report, error) {
 
 	for _, fb := range walkedBefore {
 		counter.Add(1, "before-files")
-		if r.isIgnored(fb.Path) {
+		if isExcluded(fb.Path, r.config.Exclude) {
 			counter.Add(1, "before-files-ignored")
 			continue
 		}
@@ -401,7 +391,7 @@ func (r *Reporter) Compare(before, after *fspb.Walk) (*Report, error) {
 	}
 	for _, fa := range walkedAfter {
 		counter.Add(1, "after-files")
-		if r.isIgnored(fa.Path) {
+		if isExcluded(fa.Path, r.config.Exclude) {
 			counter.Add(1, "after-files-ignored")
 			continue
 		}
@@ -546,7 +536,7 @@ func (r *Reporter) PrintRuleSummary(report *Report) {
 // UpdateReviewProto updates the reviews file to the reviewed version to be "last known good".
 func (r *Reporter) UpdateReviewProto(walkFile *WalkFile, reviewFile string) error {
 	review := &fspb.Review{
-		WalkId:        walkFile.Walk.Id,
+		WalkID:        walkFile.Walk.Id,
 		WalkReference: walkFile.Path,
 		Fingerprint:   walkFile.Fingerprint,
 	}

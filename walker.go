@@ -246,28 +246,13 @@ func (w *Walker) preformWalk(fileCh chan<- *fileInfo) error {
 	return nil
 }
 
-// isExcluded determines whether a given path was asked to be excluded from scanning.
-func isExcluded(path string, excluded []string) bool {
-	for _, e := range excluded {
-		if path == e {
-			return true
-		}
-		// if e ends in a slash, treat it like a directory and match if e is the
-		// dir of path
-		if e[len(e)-1] == filepath.Separator && strings.HasPrefix(filepath.Dir(path)+string(filepath.Separator), e) {
-			return true
-		}
-	}
-	return false
-}
-
 func (w *Walker) addNotificationToWalk(s fspb.Notification_Severity, path, msg string) {
 	w.walk.Notification = append(w.walk.Notification, &fspb.Notification{
 		Severity: s,
 		Path:     path,
 		Message:  msg,
 	})
-	log.Printf("%s: %s: %s", s, path, msg)
+	log.Printf("%s(%s): %s", s, path, msg)
 }
 
 // relDirDepth calculates the path depth relative to the origin.
